@@ -202,6 +202,9 @@ int main(int argc, char *argv[])
    MatrixFunctionCoefficient rho(2,myFun);
    ConstantCoefficient dbcCoef(dbc_val);
    FunctionCoefficient  f(nbcFun);
+   ParGridFunction rho1(&fespace);
+   rho1.ProjectCoefficient(f);
+   GridFunctionCoefficient r(&rho1);
    // ConstantCoefficient nbc1Coef(nbc_val1);
    // ConstantCoefficient nbc2Coef(nbc_val2);
    
@@ -225,7 +228,7 @@ int main(int argc, char *argv[])
    //    domain integrator.
 
    ParBilinearForm a(&fespace);
-   BilinearFormIntegrator *integ = new DiffusionIntegrator(rho);
+   BilinearFormIntegrator *integ = new DiffusionIntegrator(r);
    a.AddDomainIntegrator(integ);
    if (h1)
    {
@@ -250,11 +253,11 @@ int main(int argc, char *argv[])
         u.ProjectBdrCoefficient(dbcCoef,dbc_bdr);
 
         //Add the desired value for n.Grad(u) on the Neumann Boundary 1
-        b.AddBoundaryIntegrator(new BoundaryLFIntegrator(f),nbc_bdr1);
+        b.AddBoundaryIntegrator(new BoundaryLFIntegrator(r),nbc_bdr1);
 
         //Add the desired value for n.Grad(u) on the Neumann Boundary 2
 
-        b.AddBoundaryIntegrator(new BoundaryLFIntegrator(f),nbc_bdr2);
+        b.AddBoundaryIntegrator(new BoundaryLFIntegrator(r),nbc_bdr2);
     }
     else 
     {
