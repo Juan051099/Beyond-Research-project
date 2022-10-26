@@ -72,6 +72,8 @@ double g4Nbc(const Vector &x);
 
 double f_analytic(const Vector & x);
 
+double usol(const Vector & x);
+
 Mesh * GenerateSerialMesh(int ref);
 
 // Compute the average value of alpha*n.Grad(sol) + beta*sol over the boundary
@@ -90,7 +92,7 @@ int main(int argc, char *argv[])
 
     //2. Parse command-line options.
     int ser_ref_levels = 2;
-    int par_ref_levels = 1;
+    int par_ref_levels = 4;
     int order = 1;
     double sigma = -1.0;
     double kappa = -1.0;
@@ -219,6 +221,12 @@ int main(int argc, char *argv[])
    FunctionCoefficient g3(g3Dbc);
    FunctionCoefficient g4(g4Nbc);
    FunctionCoefficient f_an(f_analytic);
+
+   // Study of the solution u with a plot
+
+   FunctionCoefficient u1(usol);
+   ParGridFunction uSol(&fespace);
+   uSol.ProjectCoefficient(u1);
    
 
    // Since the n.Grad(u) terms arise by integrating -Div(m Grad(u)) by parts we
@@ -408,6 +416,14 @@ int main(int argc, char *argv[])
       sol_sock << "solution\n" << pmesh << u
                << "window_title '" << title_str << " Solution'"
                << " keys 'mmc'" << flush;
+      socketstream exact_sol(vishost, visport);
+      exact_sol<< "parallel " << Mpi::WorldSize()
+               << " " << Mpi::WorldRank() << "\n";
+      exact_sol.precision(8);
+      exact_sol << "solution \n" << pmesh << uSol
+                << "window_title 'Exact Solution'\n"
+                << "keys 'mmc'"<< flush;
+
    }
 
    // 17. Free the used memory.
@@ -774,7 +790,7 @@ double IntegrateBC(const ParGridFunction &x, const Array<int> &bdr,
 
 double myFun1(const Vector &x)
 {
-   return 1/exp(x[0]+x[1]);
+   return 1.0/exp(x[0]*x[1]);
 }
 
 double funCoef(const Vector &x)
@@ -794,12 +810,12 @@ double g2Nbc(const Vector &x)
 }
 double g3Dbc(const Vector &x)
 {
-    return sin(M_PI*(x[0]-1/2))*exp(x[1]);
+    return cos(M_PI*(x[0]))*exp(x[1]);
 }
 double g4Nbc(const Vector &x)
 {
     double r1 = a_;
-    return exp(x[1])*(x[1]*cos(M_PI*x[0])/r1 - M_PI*sin(M_PI*x[0])*((2*x[0]-1)/2*r1));
+    return exp(x[1])*(x[1]*cos(M_PI*x[0])/r1 - M_PI*sin(M_PI*x[0])*((2.0*x[0]-1)/2.0*r1));
 }
 
 // now, we do the the f function
@@ -807,4 +823,9 @@ double g4Nbc(const Vector &x)
 double f_analytic(const Vector & x)
 {
     return M_PI*exp(-x[0])*(M_PI*cos(M_PI*x[0])-sin(M_PI*x[0]));
+}
+
+double usol(const Vector & x)
+{
+    return cos(M_PI*(x[0]))*exp(x[1]);
 }
