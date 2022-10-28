@@ -74,6 +74,8 @@ double f_analytic(const Vector & x);
 
 double usol(const Vector & x);
 
+void u_grad_exact(const Vector &x, Vector &usol);
+
 Mesh * GenerateSerialMesh(int ref);
 
 // Compute the average value of alpha*n.Grad(sol) + beta*sol over the boundary
@@ -92,7 +94,7 @@ int main(int argc, char *argv[])
 
     //2. Parse command-line options.
     int ser_ref_levels = 2;
-    int par_ref_levels = 4;
+    int par_ref_levels = 3;
     int order = 1;
     double sigma = -1.0;
     double kappa = -1.0;
@@ -237,12 +239,14 @@ int main(int argc, char *argv[])
    // ProductCoefficient m_nbc2Coef(matCoef, nbc2Coef);
    ProductCoefficient m_nbc1Coef(g1, r);
    ProductCoefficient m_nbc2Coef(g2, r);
-   ProductCoefficient m_nbc3Coef(g3, r);
+   ProductCoefficient m_nbc4Coef(g4, r);
 
    // 8. Define the solution vector u as a parallel finite element grid function
    //    corresponding to fespace. Initialize u with initial guess of zero.
    ParGridFunction u(&fespace);
-   u = 0.0;
+   //u = 0.0;
+   VectorFunctionCoefficient u_grad(dim, u_grad_exact);
+   u.ProjectCoefficient(u1);
 
    // 9. Set up the parallel bilinear form a(.,.) on the finite element space
    //    corresponding to the Laplacian operator -Delta, by adding the Diffusion
@@ -285,7 +289,7 @@ int main(int argc, char *argv[])
 
         //Add the desired valuer for n.Grad(u) on the Neumann Boundary 3
 
-        b.AddBoundaryIntegrator(new BoundaryLFIntegrator(m_nbc3Coef), nbc_bdr0);
+        b.AddBoundaryIntegrator(new BoundaryLFIntegrator(m_nbc4Coef), nbc_bdr0);
     }
     else 
     {
@@ -335,6 +339,14 @@ int main(int argc, char *argv[])
    // 13. Recover the parallel grid function corresponding to U. This is the
    //     local finite element solution on each processor.
    a.RecoverFEMSolution(X, b, u);
+
+   // 13.1 Compute the H^1 norms of the error.
+   double h1_err_prev = 0.0;
+   double h_prev = 0.0;
+   double h1_err = u.ComputeH1Error(&u1,&u_grad,&r,1.0,1);
+   mfem::out <<"Calculate of the error: " 
+             << h1_err << endl;
+
 
    // 14. Compute the various boundary integrals.
     mfem::out << endl
@@ -814,8 +826,8 @@ double g3Dbc(const Vector &x)
 }
 double g4Nbc(const Vector &x)
 {
-    double r1 = a_;
-    return exp(x[1])*(x[1]*cos(M_PI*x[0])/r1 - M_PI*sin(M_PI*x[0])*((2.0*x[0]-1)/2.0*r1));
+   //double r = a_;
+    return exp(x[1])*(x[1]*cos(M_PI*x[0])-M_PI*sin(M_PI*x[0])*(2.0*x[0]-1.0));
 }
 
 // now, we do the the f function
@@ -828,4 +840,10 @@ double f_analytic(const Vector & x)
 double usol(const Vector & x)
 {
     return cos(M_PI*(x[0]))*exp(x[1]);
+}
+
+void u_grad_exact(const Vector &x, Vector &usol)
+{
+   usol[0] = -M_PI*sin(M_PI*x[0]*exp(x[1]));
+   usol[1] = exp(x[1]*cos(M_PI*x[0]));
 }
