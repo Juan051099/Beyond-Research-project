@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 
     //2. Parse command-line options.
     int ser_ref_levels = 2;
-    int par_ref_levels = 3;
+    int par_ref_levels = 4;
     int order = 1;
     double sigma = -1.0;
     double kappa = -1.0;
@@ -432,10 +432,11 @@ int main(int argc, char *argv[])
       exact_sol<< "parallel " << Mpi::WorldSize()
                << " " << Mpi::WorldRank() << "\n";
       exact_sol.precision(8);
+      uSol = uSol.Add(-1.0,u);
       exact_sol << "solution \n" << pmesh << uSol
                 << "window_title 'Exact Solution'\n"
                 << "keys 'mmc'"<< flush;
-
+      
    }
 
    // 17. Free the used memory.
@@ -827,7 +828,7 @@ double g3Dbc(const Vector &x)
 double g4Nbc(const Vector &x)
 {
    //double r = a_;
-    return exp(x[1])*(x[1]*cos(M_PI*x[0])-M_PI*sin(M_PI*x[0])*(2.0*x[0]-1.0));
+    return -(exp(x[1])*(2.0*x[1]*cos(M_PI*x[0])-M_PI*sin(M_PI*x[0])*(2.0*x[0]-1.0)))/sqrt((2.0*x[0]-1)*(2.0*x[0]-1)+4.0*x[1]*x[1]);
 }
 
 // now, we do the the f function
