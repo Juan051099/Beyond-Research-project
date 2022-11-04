@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
 
     //2. Parse command-line options.
     int ser_ref_levels = 2;
-    int par_ref_levels = 4;
+    int par_ref_levels = 5;
     int order = 1;
     double sigma = -1.0;
     double kappa = -1.0;
@@ -312,8 +312,8 @@ int main(int argc, char *argv[])
 
     // 12. Solver the linear system AX=B.
     HypreSolver *amg = new HypreBoomerAMG;
-    if (h1 || sigma == -1.0)
-   {
+    if (h1 || sigma == -1.0)                   
+   {                                                                                                                                         
       HyprePCG pcg(MPI_COMM_WORLD);
       pcg.SetTol(1e-12);
       pcg.SetMaxIter(200);
@@ -343,7 +343,7 @@ int main(int argc, char *argv[])
    // 13.1 Compute the H^1 norms of the error.
    double h1_err_prev = 0.0;
    double h_prev = 0.0;
-   double h1_err = u.ComputeH1Error(&u1,&u_grad,&r,1.0,1);
+   double h1_err = u.ComputeH1Error(&u1,&u_grad,&f,1.0,1.0);
    mfem::out <<"Calculate of the error: " 
              << h1_err << endl;
 
@@ -803,7 +803,7 @@ double IntegrateBC(const ParGridFunction &x, const Array<int> &bdr,
 
 double myFun1(const Vector &x)
 {
-   return 1.0/exp(x[0]*x[1]);
+   return 1.0/exp(x[0]+x[1]);
 }
 
 double funCoef(const Vector &x)
@@ -815,7 +815,7 @@ double funCoef(const Vector &x)
 //for the function u = cos(pi*x)exp(y)
 double g1Nbc(const Vector &x)
 {
-    return -exp(x[1])*cos(M_PI*x[0]);
+    return -exp(x[1])*cos(2.0*M_PI*x[0]);
 }
 double g2Nbc(const Vector &x)
 {
@@ -823,28 +823,28 @@ double g2Nbc(const Vector &x)
 }
 double g3Dbc(const Vector &x)
 {
-    return cos(M_PI*(x[0]))*exp(x[1]);
+    return cos(2.0*M_PI*x[0])*exp(x[1]);
 }
 double g4Nbc(const Vector &x)
 {
    //double r = a_;
-    return -(exp(x[1])*(2.0*x[1]*cos(M_PI*x[0])-M_PI*sin(M_PI*x[0])*(2.0*x[0]-1.0)))/sqrt((2.0*x[0]-1)*(2.0*x[0]-1)+4.0*x[1]*x[1]);
+    return -(exp(x[1])*(2.0*x[1]*cos(2.0*M_PI*x[0])-2.0*M_PI*sin(2.0*M_PI*x[0])*(2.0*x[0]-1.0)))/sqrt((2.0*x[0]-1)*(2.0*x[0]-1)+4.0*x[1]*x[1]);
 }
 
 // now, we do the the f function
 
 double f_analytic(const Vector & x)
 {
-    return M_PI*exp(-x[0])*(M_PI*cos(M_PI*x[0])-sin(M_PI*x[0]));
+    return 2.0*M_PI*exp(-x[0])*(2.0*M_PI*cos(2.0*M_PI*x[0])-sin(2.0*M_PI*x[0]));
 }
 
 double usol(const Vector & x)
 {
-    return cos(M_PI*(x[0]))*exp(x[1]);
+    return cos(2.0*M_PI*x[0])*exp(x[1]);
 }
 
 void u_grad_exact(const Vector &x, Vector &usol)
 {
-   usol[0] = -M_PI*sin(M_PI*x[0]*exp(x[1]));
-   usol[1] = exp(x[1]*cos(M_PI*x[0]));
+   usol[0] = -2.0*M_PI*sin(2.0*M_PI*x[0])*exp(x[1]);
+   usol[1] = exp(x[1])*cos(2.0*M_PI*x[0]);
 }
