@@ -74,12 +74,6 @@ void u_grad_exact(const Vector &x, Vector &usol);//Solution function gradient.
 
 Mesh * GenerateSerialMesh(int ref);
 
-// Compute the average value of alpha*n.Grad(sol) + beta*sol over the boundary
-// attributes marked in bdr_marker. Also computes the L2 norm of
-// alpha*n.Grad(sol) + beta*sol - gamma over the same boundary.
-double IntegrateBC(const ParGridFunction &sol, const Array<int> &bdr_marker,
-                   double alpha, double beta, double gamma,
-                   double &error);
 int main(int argc, char *argv[])
 {
     //1. Initialize MPI and HYPRE.
@@ -165,7 +159,7 @@ int main(int argc, char *argv[])
    //7. Setup the various coefficients needed for the Laplace operator and the
    //    various boundary conditions.
    FunctionCoefficient p(funCoef);
-   ParGridFunction rho1(&fespace); //Let us add the coefficient rho
+   ParGridFunction rho1(&fespace); //Let's add the coefficient rho
    rho1.ProjectCoefficient(p);
    GridFunctionCoefficient rho(&rho1);
    // Now we convert the boundary conditions and the f in the Laplace's
@@ -190,7 +184,7 @@ int main(int argc, char *argv[])
    u = 0.0;
 
    // 9. To study the solution we convert usol to grid function and the 
-   //solution gradien function, because the idea is to calculate the 
+   //solution gradien function, the idea is to calculate the 
    //error between the MFEM solution and the solution.
    FunctionCoefficient u1(usol);
    ParGridFunction uSol(&fespace);
@@ -585,105 +579,6 @@ Mesh * GenerateSerialMesh(int ref)
    return mesh;
 }
 
-double IntegrateBC(const ParGridFunction &x, const Array<int> &bdr,
-                   double alpha, double beta, double gamma,
-                   double &glb_err)
-{
-   double loc_vals[3];
-   double &nrm = loc_vals[0];
-   double &avg = loc_vals[1];
-   double &error = loc_vals[2];
 
-   nrm = 0.0;
-   avg = 0.0;
-   error = 0.0;
-
-   const bool a_is_zero = alpha == 0.0;
-   const bool b_is_zero = beta == 0.0;
-
-   const ParFiniteElementSpace &fes = *x.ParFESpace();
-   MFEM_ASSERT(fes.GetVDim() == 1, "");
-   ParMesh &mesh = *fes.GetParMesh();
-   Vector shape, loc_dofs, w_nor;
-   DenseMatrix dshape;
-   Array<int> dof_ids;
-   for (int i = 0; i < mesh.GetNBE(); i++)
-   {
-      if (bdr[mesh.GetBdrAttribute(i)-1] == 0) { continue; }
-
-      FaceElementTransformations *FTr = mesh.GetBdrFaceTransformations(i);
-      if (FTr == nullptr) { continue; }
-
-      const FiniteElement &fe = *fes.GetFE(FTr->Elem1No);
-      MFEM_ASSERT(fe.GetMapType() == FiniteElement::VALUE, "");
-      const int int_order = 2*fe.GetOrder() + 3;
-      const IntegrationRule &ir = IntRules.Get(FTr->FaceGeom, int_order);
-
-      fes.GetElementDofs(FTr->Elem1No, dof_ids);
-      x.GetSubVector(dof_ids, loc_dofs);
-      if (!a_is_zero)
-      {
-         const int sdim = FTr->Face->GetSpaceDim();
-         w_nor.SetSize(sdim);
-         dshape.SetSize(fe.GetDof(), sdim);
-      }
-      if (!b_is_zero)
-      {
-         shape.SetSize(fe.GetDof());
-      }
-      for (int j = 0; j < ir.GetNPoints(); j++)
-      {
-         const IntegrationPoint &ip = ir.IntPoint(j);
-         IntegrationPoint eip;
-         FTr->Loc1.Transform(ip, eip);
-         FTr->Face->SetIntPoint(&ip);
-         double face_weight = FTr->Face->Weight();
-         double val = 0.0;
-         if (!a_is_zero)
-         {
-            FTr->Elem1->SetIntPoint(&eip);
-            fe.CalcPhysDShape(*FTr->Elem1, dshape);
-            CalcOrtho(FTr->Face->Jacobian(), w_nor);
-            val += alpha * dshape.InnerProduct(w_nor, loc_dofs) / face_weight;
-         }
-         if (!b_is_zero)
-         {
-            fe.CalcShape(eip, shape);
-            val += beta * (shape * loc_dofs);
-         }
-
-         // Measure the length of the boundary
-         nrm += ip.weight * face_weight;
-
-         // Integrate alpha * n.Grad(x) + beta * x
-         avg += val * ip.weight * face_weight;
-
-         // Integrate |alpha * n.Grad(x) + beta * x - gamma|^2
-         val -= gamma;
-         error += (val*val) * ip.weight * face_weight;
-      }
-   }
-
-   double glb_vals[3];
-   MPI_Allreduce(loc_vals, glb_vals, 3, MPI_DOUBLE, MPI_SUM, fes.GetComm());
-
-   double glb_nrm = glb_vals[0];
-   double glb_avg = glb_vals[1];
-   glb_err = glb_vals[2];
-
-   // Normalize by the length of the boundary
-   if (std::abs(glb_nrm) > 0.0)
-   {
-      glb_err /= glb_nrm;
-      glb_avg /= glb_nrm;
-   }
-
-   // Compute l2 norm of the error in the boundary condition (negative
-   // quadrature weights may produce negative 'error')
-   glb_err = (glb_err >= 0.0) ? sqrt(glb_err) : -sqrt(-glb_err);
-
-   // Return the average value of alpha * n.Grad(x) + beta * x
-   return glb_avg;
-}
 
 
