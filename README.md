@@ -1,2 +1,2 @@
 # Beyond-Research-project
-For now it is just a draft.
+Poisson’s equation with Dirichlet and Neumann Boundary conditions in MFEM
